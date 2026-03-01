@@ -1,0 +1,227 @@
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface ReleaseAsset {
+  name: string;
+  browser_download_url: string;
+}
+
+interface GithubRelease {
+  tag_name: string;
+  html_url: string;
+  assets: ReleaseAsset[];
+}
+
+// ─── Version comparison ───────────────────────────────────────────────────────
+
+/**
+ * Returns true if `latest` is strictly newer than `current`.
+ * Both strings may be prefixed with "v" (e.g. "v1.2.3" or "1.2.3").
+ * When `current` is "dev" (running from source), always returns false.
+ */
+const parseVersion = (v: string) => v.replace(/^v/, "").split(".").map(Number);
+
+export function isNewerVersion(current: string, latest: string): boolean {
+  if (current === "dev") return false;
+  const a = parseVersion(current);
+  const b = parseVersion(latest);
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const ai = a[i] ?? 0;
+    const bi = b[i] ?? 0;
+    if (bi > ai) return true;
+    if (ai > bi) return false;
+  }
+  return false;
+}
+
+// ─── Asset selection ──────────────────────────────────────────────────────────
+
+/**
+ * Picks the release asset matching the current platform and architecture.
+ * Expected asset naming convention:
+ *   github-issue-ops-<platform>-<arch>          (e.g. macos-arm64)
+ *   github-issue-ops-<platform>-<arch>.exe      (Windows)
+ */
+export function selectAsset(
+  assets: ReleaseAsset[],
+  platform: string,
+  arch: string,
+): ReleaseAsset | null {
+  const platformMap: Record<string, string> = {
+    darwin: "macos",
+    win32: "windows",
+  };
+  const artifactPlatform = platformMap[platform] ?? platform;
+  const suffix = artifactPlatform === "windows" ? ".exe" : "";
+  const name = `github-issue-ops-${artifactPlatform}-${arch}${suffix}`;
+  const legacySuffix = platform === "win32" ? ".exe" : "";
+  const legacyName = `github-issue-ops-${platform}-${arch}${legacySuffix}`;
+  return assets.find((a) => a.name === name) ?? assets.find((a) => a.name === legacyName) ?? null;
+}
+
+// ─── Blog URL helper ───────────────────────────────────────────────────────────
+
+/**
+ * Derives the VitePress blog post URL for a given release tag.
+ */
+export function blogPostUrl(tag: string): string {
+  const normalized = `v${tag.replace(/^v/, "")}`;
+  const slug = normalized.replace(/\./g, "-");
+  return `https://fulll.github.io/github-issue-ops/blog/release-${slug}`;
+}
+
+// ─── GitHub API ───────────────────────────────────────────────────────────────
+
+export async function fetchLatestRelease(
+  token?: string,
+  signal?: AbortSignal,
+): Promise<GithubRelease> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch("https://api.github.com/repos/fulll/github-issue-ops/releases/latest", {
+    headers,
+    signal,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GitHub API error ${res.status}: ${body}`);
+  }
+  return res.json() as Promise<GithubRelease>;
+}
+
+// ─── Download ─────────────────────────────────────────────────────────────────
+
+/**
+ * Downloads a binary from `url` and atomically replaces `dest`.
+ */
+async function downloadBinary(url: string, dest: string, debug = false): Promise<void> {
+  if (debug) process.stdout.write(`[debug] downloading from ${url}\n`);
+  const res = await fetch(url);
+  if (debug)
+    process.stdout.write(
+      `[debug] fetch response: status=${res.status} ok=${res.ok} url=${res.url}\n`,
+    );
+  if (!res.ok) {
+    throw new Error(`Download failed (${res.status}): ${url}`);
+  }
+  const buffer = await res.arrayBuffer();
+  if (debug) process.stdout.write(`[debug] downloaded ${buffer.byteLength} bytes\n`);
+  if (buffer.byteLength === 0) {
+    throw new Error(`Downloaded empty file from ${url}`);
+  }
+  const tmpPath = `${dest}.tmp`;
+  process.stdout.write(`Replacing ${dest}…\n`);
+  await Bun.write(tmpPath, buffer);
+  if (debug) process.stdout.write(`[debug] wrote tmp file ${tmpPath}\n`);
+  if (process.platform === "darwin") {
+    const xattr = Bun.spawnSync(["xattr", "-d", "com.apple.quarantine", tmpPath]);
+    const xattrStderr = xattr.stderr?.toString() ?? "";
+    if (debug) {
+      process.stdout.write(
+        `[debug] xattr exit=${xattr.exitCode} stderr=${JSON.stringify(xattrStderr)}\n`,
+      );
+    }
+    if (xattr.exitCode !== 0) {
+      const lowerStderr = xattrStderr.toLowerCase();
+      const isNoSuchAttr =
+        lowerStderr.includes("no such xattr") || lowerStderr.includes("no such attribute");
+      if (!isNoSuchAttr) {
+        throw new Error(`xattr failed: ${xattrStderr}`);
+      }
+    }
+  }
+  const chmod = Bun.spawnSync(["chmod", "+x", tmpPath]);
+  if (chmod.exitCode !== 0) {
+    throw new Error(`chmod failed: ${chmod.stderr.toString()}`);
+  }
+  if (debug) process.stdout.write(`[debug] chmod +x done\n`);
+  const mv = Bun.spawnSync(["mv", tmpPath, dest]);
+  if (mv.exitCode !== 0) {
+    throw new Error(`mv failed: ${mv.stderr.toString()}`);
+  }
+  if (debug) process.stdout.write(`[debug] mv done → ${dest}\n`);
+}
+
+// ─── Orchestration ────────────────────────────────────────────────────────────
+
+export async function performUpgrade(
+  currentVersion: string,
+  execPath: string,
+  token?: string,
+  debug = false,
+): Promise<void> {
+  if (currentVersion === "dev") {
+    process.stdout.write(
+      "Running from source (dev). Upgrade is only available for compiled binaries.\n",
+    );
+    return;
+  }
+
+  process.stdout.write("Checking for updates…\n");
+  const release = await fetchLatestRelease(token);
+  const latestVersion = release.tag_name;
+
+  if (!isNewerVersion(currentVersion, latestVersion)) {
+    process.stdout.write(
+      `Congrats! You're already on the latest version of github-issue-ops (${latestVersion}).\n`,
+    );
+    return;
+  }
+
+  const asset = selectAsset(release.assets, process.platform, process.arch);
+  if (debug) {
+    process.stdout.write(
+      `[debug] available assets: ${release.assets.map((a) => a.name).join(", ")}\n`,
+    );
+    process.stdout.write(`[debug] selected asset: ${asset?.name ?? "(none)"}\n`);
+  }
+  if (!asset) {
+    throw new Error(
+      `No binary found for platform ${process.platform}/${process.arch} in release ${latestVersion}.`,
+    );
+  }
+
+  process.stdout.write(`Upgrading ${currentVersion} → ${latestVersion}…\n`);
+  await downloadBinary(asset.browser_download_url, execPath, debug);
+  process.stdout.write(
+    [
+      ``,
+      `Welcome to github-issue-ops ${latestVersion}!`,
+      ``,
+      `What's new in ${latestVersion}:`,
+      `  ${blogPostUrl(latestVersion)}`,
+      ``,
+      `Release notes:`,
+      `  ${release.html_url}`,
+      ``,
+      `Commit log:`,
+      `  https://github.com/fulll/github-issue-ops/compare/${currentVersion.startsWith("v") ? currentVersion : `v${currentVersion}`}...${latestVersion}`,
+      ``,
+      `Report a bug:`,
+      `  https://github.com/fulll/github-issue-ops/issues/new`,
+      ``,
+      `Run \`github-issue-ops --help\` to explore all options.`,
+      ``,
+    ].join("\n"),
+  );
+}
+
+// ─── Silent update check ──────────────────────────────────────────────────────
+
+export async function checkForUpdate(
+  currentVersion: string,
+  token?: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  if (currentVersion === "dev") return null;
+  try {
+    const release = await fetchLatestRelease(token, signal);
+    return isNewerVersion(currentVersion, release.tag_name) ? release.tag_name : null;
+  } catch {
+    return null;
+  }
+}

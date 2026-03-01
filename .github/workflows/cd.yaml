@@ -1,0 +1,57 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build all targets
+        run: |
+          bun run build --target bun-linux-x64
+          bun run build --target bun-linux-arm64
+          bun run build --target bun-darwin-x64
+          bun run build --target bun-darwin-arm64
+          bun run build --target bun-windows-x64
+          bun run build --target bun-linux-x64-musl
+
+      - name: Package artifacts
+        run: |
+          mkdir -p release
+          for f in dist/github-issue-ops-*; do
+            target=$(basename "$f" | sed 's/^github-issue-ops-//')
+            if [[ "$f" == *.exe ]]; then
+              zip "release/github-issue-ops-${target}.zip" "$f"
+            else
+              tar -czf "release/github-issue-ops-${target}.tar.gz" -C dist "$(basename $f)"
+            fi
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
