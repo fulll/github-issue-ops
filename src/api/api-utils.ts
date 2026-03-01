@@ -52,10 +52,11 @@ function getRetryDelayMs(res: Response, attempt: number): number {
     }
   }
   // Retry-After: seconds to wait (used by 429 / secondary rate limits)
+  // Note: >= 0 so that Retry-After: "0" (retry immediately) is honoured.
   const retryAfterHeader = res.headers.get("Retry-After");
   if (retryAfterHeader !== null) {
     const seconds = parseInt(retryAfterHeader, 10);
-    if (Number.isFinite(seconds) && seconds > 0) {
+    if (Number.isFinite(seconds) && seconds >= 0) {
       return seconds * 1_000;
     }
   }

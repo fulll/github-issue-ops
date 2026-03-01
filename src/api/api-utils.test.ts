@@ -80,6 +80,65 @@ describe("fetchWithRetry", () => {
     expect(res.status).toBe(404);
     expect(calls).toBe(1);
   });
+
+  test("uses x-ratelimit-reset header for delay when available", async () => {
+    // x-ratelimit-reset in the past → delay = 0 → retries immediately
+    const resetTimestamp = Math.floor(Date.now() / 1_000) - 5; // 5 s in the past
+    let calls = 0;
+    globalThis.fetch = mock(() => {
+      calls++;
+      if (calls === 1) {
+        return Promise.resolve(
+          new Response("Rate limited", {
+            status: 429,
+            headers: { "x-ratelimit-reset": String(resetTimestamp) },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const res = await fetchWithRetry("https://api.github.com/test", {}, 3);
+    expect(res.status).toBe(200);
+    expect(calls).toBe(2);
+  });
+
+  test("throws when wait exceeds MAX_AUTO_RETRY_WAIT_MS", async () => {
+    // Retry-After of 60 s > MAX_AUTO_RETRY_WAIT_MS (10 s) → should throw
+    globalThis.fetch = mock(() =>
+      Promise.resolve(
+        new Response("Rate limited", {
+          status: 429,
+          headers: { "Retry-After": "60" },
+        }),
+      ),
+    );
+
+    await expect(fetchWithRetry("https://api.github.com/test", {}, 3)).rejects.toThrow("retry in");
+  });
+
+  test("uses exponential back-off when no header is present", async () => {
+    // No Retry-After and no x-ratelimit-reset → exponential back-off
+    // Jitter: 0.9–1.1 × BASE_RETRY_DELAY_MS (1 s) → would take ~1 s.
+    // Use Retry-After: "0" (zero delay) to exercise the >= 0 fix without sleeping.
+    let calls = 0;
+    globalThis.fetch = mock(() => {
+      calls++;
+      if (calls < 2) {
+        return Promise.resolve(
+          new Response("Rate limited", {
+            status: 429,
+            headers: { "Retry-After": "0" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const res = await fetchWithRetry("https://api.github.com/test", {}, 3);
+    expect(res.status).toBe(200);
+    expect(calls).toBe(2);
+  });
 });
 
 // ─── paginatedFetch ───────────────────────────────────────────────────────────

@@ -4,4 +4,19 @@ coverageReporter = ["text", "lcov"]
 coverageThreshold = { lines = 0.75, functions = 0.8, statements = 0.8 }
 coverageSkipTestFiles = true
 preload = ["./src/test-setup.ts"]
-coveragePathIgnorePatterns = ["src/test-setup.ts"]
+# Exclude side-effectful files that are not unit-tested per project conventions:
+# api/github-api.ts  — REST client (I/O only, tested via integration)
+# commands/          — orchestration shells (CLI I/O)
+# tui/editor.ts      — spawns $EDITOR subprocess
+# upgrade.ts         — network + filesystem
+# github-issue-ops.ts — CLI entry point
+coveragePathIgnorePatterns = [
+  "src/test-setup.ts",
+  "src/api/github-api.ts",
+  "src/commands/create.ts",
+  "src/commands/refresh.ts",
+  "src/commands/dispatch.ts",
+  "src/tui/editor.ts",
+  "src/upgrade.ts",
+  "github-issue-ops.ts",
+]

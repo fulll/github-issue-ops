@@ -104,4 +104,112 @@ describe("parseResults", () => {
     const result = parseResults("");
     expect(result.items).toHaveLength(0);
   });
+
+  test("falls back to markdown when explicit json format but invalid JSON", () => {
+    // When format:'json' is forced but the content is markdown, fall back gracefully
+    const md = "- [ ] `a/b` \u2014 `c.ts:1` \u2014 text";
+    const result = parseResults(md, "json");
+    // JSON.parse would throw for markdown content → fallback to markdown
+    expect(result.items).toHaveLength(1);
+  });
+});
+
+// ─── detectFormat (invalid JSON) ──────────────────────────────────────────────
+
+describe("detectFormat (invalid JSON)", () => {
+  test("returns markdown when content starts with [ but is not valid JSON", () => {
+    expect(detectFormat("[not json")).toBe("markdown");
+  });
+
+  test("returns markdown when content starts with { but is not valid JSON", () => {
+    expect(detectFormat("{broken:")).toBe("markdown");
+  });
+});
+
+// ─── parseJson (Case 3 — github-code-search group format) ────────────────────
+
+describe("parseJson (Case 3 — group format)", () => {
+  test("parses group format with textMatches and segments", () => {
+    const grouped = [
+      {
+        repoFullName: "org/backend",
+        matches: [
+          {
+            path: "src/app.ts",
+            textMatches: [
+              {
+                fragment: "context around the match",
+                matches: [{ text: "matched text", indices: [0, 7] }],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const result = parseJson(JSON.stringify(grouped));
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      repo: "org/backend",
+      path: "src/app.ts",
+      text: "matched text",
+    });
+  });
+
+  test("parses group format with textMatches but no segments (uses fragment)", () => {
+    const grouped = [
+      {
+        repoFullName: "org/repo",
+        matches: [
+          {
+            path: "readme.md",
+            textMatches: [{ fragment: "fragment text here", matches: [] }],
+          },
+        ],
+      },
+    ];
+    const result = parseJson(JSON.stringify(grouped));
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.text).toBe("fragment text here");
+  });
+
+  test("parses group format with matches array but no textMatches", () => {
+    const grouped = [
+      {
+        repoFullName: "org/repo",
+        matches: [{ path: "file.ts" }],
+      },
+    ];
+    const result = parseJson(JSON.stringify(grouped));
+    // No textMatches → one empty-text item per match
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({ repo: "org/repo", path: "file.ts", text: "" });
+  });
+
+  test("returns empty items for empty JSON array", () => {
+    const result = parseJson("[]");
+    expect(result.items).toHaveLength(0);
+  });
+});
+
+// ─── parseMarkdown (no-line-number alternative) ───────────────────────────────
+
+describe("parseMarkdown (alternative format without line number)", () => {
+  test("parses checklist items without line numbers", () => {
+    const md =
+      "- [ ] `org/repo` \u2014 `src/config.ts` \u2014 missing\n- [x] `org/repo` \u2014 `src/app.ts` \u2014 fixed";
+    const result = parseMarkdown(md);
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({
+      repo: "org/repo",
+      path: "src/config.ts",
+      line: 0,
+      checked: false,
+    });
+    expect(result.items[1]).toMatchObject({
+      repo: "org/repo",
+      path: "src/app.ts",
+      line: 0,
+      checked: true,
+    });
+  });
 });

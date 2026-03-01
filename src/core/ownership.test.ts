@@ -1,4 +1,4 @@
-import { describe, expect, test, mock } from "bun:test";
+import { describe, expect, test, mock, afterEach } from "bun:test";
 import {
   teamsResolver,
   fallbackResolver,
@@ -87,5 +87,147 @@ describe("resolveOwners", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+// ─── teamsResolver (API-path branches) ───────────────────────────────────────
+
+describe("teamsResolver (with mocked GitHub API)", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test("returns null when org returns no matching teams", async () => {
+    // listOrgTeams returns [] after prefix filter
+    globalThis.fetch = mock((url: string | URL) => {
+      const u = url.toString();
+      if (u.includes("/orgs/acme/teams")) {
+        // Return a team that does NOT match the prefix
+        return Promise.resolve(
+          new Response(JSON.stringify([{ slug: "infra-ops", name: "Infra" }]), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    });
+    // teamPrefixes: ["team-"] → "infra-ops" doesn't match → teams array filtered to []
+    const result = await teamsResolver({ ...BASE_CTX, teamPrefixes: ["team-"] });
+    expect(result).toBeNull();
+  });
+
+  test("returns null when teams exist but repo is not assigned to any", async () => {
+    globalThis.fetch = mock((url: string | URL) => {
+      const u = url.toString();
+      if (u.includes("/orgs/acme/teams?")) {
+        return Promise.resolve(
+          new Response(JSON.stringify([{ slug: "team-api", name: "API" }]), { status: 200 }),
+        );
+      }
+      if (u.includes("/teams/team-api/repos")) {
+        // team exists but repo "backend" is not in its repos
+        return Promise.resolve(
+          new Response(JSON.stringify([{ name: "frontend" }]), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    });
+    const result = await teamsResolver(BASE_CTX);
+    expect(result).toBeNull();
+  });
+
+  test("returns formatted team slugs when repo is assigned to a team", async () => {
+    globalThis.fetch = mock((url: string | URL) => {
+      const u = url.toString();
+      if (u.includes("/orgs/acme/teams?")) {
+        return Promise.resolve(
+          new Response(JSON.stringify([{ slug: "team-api", name: "API" }]), { status: 200 }),
+        );
+      }
+      if (u.includes("/teams/team-api/repos")) {
+        return Promise.resolve(
+          new Response(JSON.stringify([{ name: "backend" }]), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    });
+    const result = await teamsResolver(BASE_CTX);
+    expect(result).toEqual(["acme/team-api"]);
+  });
+});
+
+// ─── codeownersResolver (via default chain) ───────────────────────────────────
+
+describe("codeownersResolver (via resolveOwners with mocked CODEOWNERS)", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test("parses catch-all CODEOWNERS rules and returns owners", async () => {
+    globalThis.fetch = mock((url: string | URL) => {
+      const u = url.toString();
+      // First CODEOWNERS path (bare) → 404
+      if (u.includes("/contents/CODEOWNERS") && !u.includes(".github/") && !u.includes("docs/")) {
+        return Promise.resolve(new Response("Not Found", { status: 404 }));
+      }
+      // Second path — .github/CODEOWNERS → success
+      if (u.includes(".github/CODEOWNERS")) {
+        return Promise.resolve(
+          new Response("# comment\n* @alice @team-backend\n", { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    });
+    // teamPrefixes: [] → teamsResolver returns null immediately
+    const result = await resolveOwners({ ...BASE_CTX, teamPrefixes: [] });
+    expect(result).toEqual(["alice", "team-backend"]);
+  });
+
+  test("returns empty array when CODEOWNERS has no catch-all rules", async () => {
+    globalThis.fetch = mock((url: string | URL) => {
+      const u = url.toString();
+      if (u.includes(".github/CODEOWNERS")) {
+        return Promise.resolve(new Response("src/ @alice\n", { status: 200 }));
+      }
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    });
+    const result = await resolveOwners({ ...BASE_CTX, teamPrefixes: [] });
+    // No catch-all rule → codeownersResolver returns null → mappingResolver (no centralRepo) → null → fallback
+    expect(result).toEqual([]);
+  });
+});
+
+// ─── mappingResolver (via default chain) ─────────────────────────────────────
+
+describe("mappingResolver (via resolveOwners with mocked owners.json)", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test("resolves owners from owners.json when CODEOWNERS is absent", async () => {
+    globalThis.fetch = mock((url: string | URL) => {
+      const u = url.toString();
+      if (u.includes("owners.json")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ "acme/backend": ["bob", "carol"] }), { status: 200 }),
+        );
+      }
+      // All CODEOWNERS paths → 404
+      return Promise.resolve(new Response("Not Found", { status: 404 }));
+    });
+    const ctx = { ...BASE_CTX, teamPrefixes: [], centralRepo: "acme/central" };
+    const result = await resolveOwners(ctx);
+    expect(result).toEqual(["bob", "carol"]);
+  });
+
+  test("falls through to fallback when owners.json returns non-ok", async () => {
+    globalThis.fetch = mock(() => Promise.resolve(new Response("Not Found", { status: 404 })));
+    const ctx = { ...BASE_CTX, teamPrefixes: [], centralRepo: "acme/central" };
+    const result = await resolveOwners(ctx);
+    expect(result).toEqual([]);
   });
 });

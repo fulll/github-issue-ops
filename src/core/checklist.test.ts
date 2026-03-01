@@ -118,12 +118,74 @@ describe("buildSummaryBlock", () => {
   });
 });
 
+describe("parseChecklist (no-line-number variant)", () => {
+  test("parses items without a line number", () => {
+    const body =
+      "- [ ] `org/repo` \u2014 `src/config.ts` \u2014 missing config\n- [x] `org/repo` \u2014 `src/app.ts` \u2014 fixed";
+    const items = parseChecklist(body);
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      checked: false,
+      repo: "org/repo",
+      path: "src/config.ts",
+      line: 0,
+      text: "missing config",
+    });
+    expect(items[1]).toMatchObject({
+      checked: true,
+      repo: "org/repo",
+      path: "src/app.ts",
+      line: 0,
+      text: "fixed",
+    });
+  });
+});
+
+describe("applyDiff (no-line-number + empty-body edge cases)", () => {
+  test("marks removed no-line-number items as checked", () => {
+    // Build checklist with no line number
+    const base: ChecklistItem[] = [
+      { checked: false, repo: "org/a", path: "a.ts", line: 0, text: "old" },
+    ];
+    const body = `- [ ] \`org/a\` \u2014 \`a.ts\` \u2014 old`;
+    const diff = diffChecklist(base, []);
+    const updated = applyDiff(body, diff);
+    expect(updated).toContain("- [x] `org/a`");
+  });
+
+  test("appends added items to body with no existing checklist", () => {
+    const diff = diffChecklist(
+      [],
+      [{ checked: false, repo: "org/b", path: "b.ts", line: 1, text: "new" }],
+    );
+    const updated = applyDiff("## Title\n\nSome prose", diff);
+    expect(updated).toContain("- [ ] `org/b`");
+  });
+});
+
 describe("updateSummaryBlock", () => {
   test("replaces existing summary block", () => {
     const body = "## Checklist\n\n" + buildSummaryBlock({ total: 5, resolved: 0, added: 0 });
     const updated = updateSummaryBlock(body, { total: 5, resolved: 5, added: 0 });
     const count = (updated.match(/## Summary/g) ?? []).length;
     expect(count).toBe(1);
+  });
+
+  test("inserts summary block before metadata comment", () => {
+    const meta = "<!-- github-issue-ops:metadata\n{}\n-->";
+    const body = `## Checklist\n\n- [ ] \`r/a\` \u2014 \`f.ts:1\` \u2014 x\n\n${meta}`;
+    const updated = updateSummaryBlock(body, { total: 1, resolved: 0, added: 0 });
+    const metaPos = updated.indexOf("<!-- github-issue-ops:metadata");
+    const summaryPos = updated.indexOf("## Summary");
+    expect(summaryPos).toBeGreaterThan(-1);
+    expect(summaryPos).toBeLessThan(metaPos);
+  });
+
+  test("appends summary block at end when no metadata comment", () => {
+    const body = "## Checklist\n\n- [ ] `r/a` \u2014 `f.ts:1` \u2014 x";
+    const updated = updateSummaryBlock(body, { total: 1, resolved: 0, added: 0 });
+    expect(updated).toContain("## Summary");
+    expect(updated.indexOf("## Summary")).toBeGreaterThan(updated.indexOf("## Checklist"));
   });
 });
 
