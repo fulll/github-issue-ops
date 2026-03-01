@@ -35,10 +35,10 @@ C4Context
 
 ## Actors
 
-| Actor               | Description                                                                                                                   |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **Developer**       | The person (or CI job) that invokes the tool. Provides a `GITHUB_TOKEN` and pipes `github-code-search` output to stdin.      |
-| **GitHub REST API** | The only external system. Used for issue CRUD, labels, templates, org-team listing, CODEOWNERS, and issue search (dedup).    |
+| Actor               | Description                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Developer**       | The person (or CI job) that invokes the tool. Provides a `GITHUB_TOKEN` and pipes `github-code-search` output to stdin.   |
+| **GitHub REST API** | The only external system. Used for issue CRUD, labels, templates, org-team listing, CODEOWNERS, and issue search (dedup). |
 
 ## Authentication
 

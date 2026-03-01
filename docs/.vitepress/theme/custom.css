@@ -40,12 +40,7 @@
 /* ── Hero title gradient ─────────────────────────────────────────────────── */
 :root {
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(
-    135deg,
-    #0000cc 0%,
-    #4488ff 55%,
-    #ffcc33 100%
-  );
+  --vp-home-hero-name-background: linear-gradient(135deg, #0000cc 0%, #4488ff 55%, #ffcc33 100%);
 }
 
 .VPHero span.name.clip {

@@ -12,8 +12,14 @@ export default defineConfig({
   head: [
     // Favicons — fulll brand assets
     ["link", { rel: "icon", type: "image/svg+xml", href: "/github-issue-ops/favicon.svg" }],
-    ["link", { rel: "icon", type: "image/png", sizes: "72x72", href: "/github-issue-ops/favicon-72.png" }],
-    ["link", { rel: "apple-touch-icon", sizes: "114x114", href: "/github-issue-ops/apple-touch-icon.png" }],
+    [
+      "link",
+      { rel: "icon", type: "image/png", sizes: "72x72", href: "/github-issue-ops/favicon-72.png" },
+    ],
+    [
+      "link",
+      { rel: "apple-touch-icon", sizes: "114x114", href: "/github-issue-ops/apple-touch-icon.png" },
+    ],
     // fulll dark blue as browser theme colour
     ["meta", { name: "theme-color", content: "#0000CC" }],
   ],

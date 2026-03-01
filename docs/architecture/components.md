@@ -85,16 +85,16 @@ C4Component
 
 ## Component descriptions
 
-| Component                | Source file              | Key exports                                                                                                                                                               |
-| ------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Input parser**         | `src/input/stdin.ts`     | `detectFormat()` — JSON or Markdown; `parseMarkdown()` — parses checklist + replay block; `parseJson()` — 3 formats: flat array, wrapper object, github-code-search groups. |
-| **Checklist engine**     | `src/core/checklist.ts`  | `buildChecklist()` — results → Markdown; `parseChecklist()` — Markdown → items; `diffChecklist()` — old vs new; `applyDiff()` — update body in-place; `BODY_LIMIT = 65_000`. |
-| **Metadata store**       | `src/core/metadata.ts`   | `embedMetadata()` — appends `<!-- github-issue-ops:metadata … -->` block; `extractMetadata()` — parses it back; `updateMetadata()` — updates a field; `stripMetadata()` — removes the comment. |
-| **Output formatter**     | `src/output/format.ts`   | `buildEpicBody()` — full EPIC Markdown with checklist + summary; `buildSubIssueBody()` — per-repo issue body listing files; `buildPlanTable()` — dispatch plan as ASCII table; `splitBodyAtLimit()` — splits body at `BODY_LIMIT`. |
-| **Teams resolver**       | `src/core/ownership.ts`  | Lists all org teams matching `teamPrefixes`, then checks which have the target repo. Returns `["@org/team"]` slugs or `null`.                                              |
-| **CODEOWNERS resolver**  | `src/core/ownership.ts`  | Fetches `CODEOWNERS`, `.github/CODEOWNERS`, `docs/CODEOWNERS`. Parses only catch-all rules (`*` or `/` patterns). Returns usernames or `null`.                            |
-| **Mapping resolver**     | `src/core/ownership.ts`  | Fetches `.github-issue-ops/owners.json` from `centralRepo`. Looks up `repoFullName` then `repoName`. Returns owners or `null`.                                            |
-| **Fallback resolver**    | `src/core/ownership.ts`  | Always returns `[]`. Ensures `resolveOwners()` never returns `null`.                                                                                                      |
+| Component               | Source file             | Key exports                                                                                                                                                                                                                        |
+| ----------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Input parser**        | `src/input/stdin.ts`    | `detectFormat()` — JSON or Markdown; `parseMarkdown()` — parses checklist + replay block; `parseJson()` — 3 formats: flat array, wrapper object, github-code-search groups.                                                        |
+| **Checklist engine**    | `src/core/checklist.ts` | `buildChecklist()` — results → Markdown; `parseChecklist()` — Markdown → items; `diffChecklist()` — old vs new; `applyDiff()` — update body in-place; `BODY_LIMIT = 65_000`.                                                       |
+| **Metadata store**      | `src/core/metadata.ts`  | `embedMetadata()` — appends `<!-- github-issue-ops:metadata … -->` block; `extractMetadata()` — parses it back; `updateMetadata()` — updates a field; `stripMetadata()` — removes the comment.                                     |
+| **Output formatter**    | `src/output/format.ts`  | `buildEpicBody()` — full EPIC Markdown with checklist + summary; `buildSubIssueBody()` — per-repo issue body listing files; `buildPlanTable()` — dispatch plan as ASCII table; `splitBodyAtLimit()` — splits body at `BODY_LIMIT`. |
+| **Teams resolver**      | `src/core/ownership.ts` | Lists all org teams matching `teamPrefixes`, then checks which have the target repo. Returns `["@org/team"]` slugs or `null`.                                                                                                      |
+| **CODEOWNERS resolver** | `src/core/ownership.ts` | Fetches `CODEOWNERS`, `.github/CODEOWNERS`, `docs/CODEOWNERS`. Parses only catch-all rules (`*` or `/` patterns). Returns usernames or `null`.                                                                                     |
+| **Mapping resolver**    | `src/core/ownership.ts` | Fetches `.github-issue-ops/owners.json` from `centralRepo`. Looks up `repoFullName` then `repoName`. Returns owners or `null`.                                                                                                     |
+| **Fallback resolver**   | `src/core/ownership.ts` | Always returns `[]`. Ensures `resolveOwners()` never returns `null`.                                                                                                                                                               |
 
 ## Design principles
 
