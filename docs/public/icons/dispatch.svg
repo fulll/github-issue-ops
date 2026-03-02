@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0000CC" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <!-- central node -->
+  <circle cx="12" cy="5" r="2"/>
+  <!-- left repo node -->
+  <circle cx="4" cy="19" r="2"/>
+  <!-- center repo node -->
+  <circle cx="12" cy="19" r="2"/>
+  <!-- right repo node -->
+  <circle cx="20" cy="19" r="2"/>
+  <!-- edges from central to repos -->
+  <line x1="12" y1="7" x2="4" y2="17"/>
+  <line x1="12" y1="7" x2="12" y2="17"/>
+  <line x1="12" y1="7" x2="20" y2="17"/>
+</svg>

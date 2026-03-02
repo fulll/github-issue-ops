@@ -28,28 +28,27 @@ export default defineConfig({
     logo: "/logo.svg",
 
     nav: [
-      { text: "Guide", link: "/guide/getting-started", activeMatch: "^/guide/" },
+      { text: "Getting Started", link: "/getting-started/", activeMatch: "^/getting-started/" },
+      { text: "Guide", link: "/guide/how-it-works", activeMatch: "^/guide/" },
       { text: "Reference", link: "/reference/create", activeMatch: "^/reference/" },
       { text: "Architecture", link: "/architecture/overview", activeMatch: "^/architecture/" },
-      { text: "Changelog", link: "https://github.com/fulll/github-issue-ops/releases" },
+      { text: "What's New", link: "/whats-new/", activeMatch: "^/whats-new/" },
     ],
 
     sidebar: {
-      "/guide/": [
+      "/getting-started/": [
         {
-          text: "Introduction",
+          text: "Getting Started",
           items: [
-            { text: "Getting started", link: "/guide/getting-started" },
-            { text: "How it works", link: "/guide/how-it-works" },
+            { text: "Installation", link: "/getting-started/#installation" },
+            { text: "Quickstart", link: "/getting-started/#quickstart" },
           ],
         },
+      ],
+      "/guide/": [
         {
-          text: "Commands",
-          items: [
-            { text: "issue create", link: "/guide/getting-started#issue-create" },
-            { text: "issue refresh", link: "/guide/getting-started#issue-refresh" },
-            { text: "issue dispatch", link: "/guide/getting-started#issue-dispatch" },
-          ],
+          text: "Guide",
+          items: [{ text: "How it works", link: "/guide/how-it-works" }],
         },
       ],
       "/reference/": [
@@ -72,13 +71,23 @@ export default defineConfig({
           ],
         },
       ],
+      "/whats-new/": [
+        {
+          text: "What's New",
+          items: [{ text: "Releases", link: "/whats-new/#releases" }],
+        },
+      ],
+    },
+
+    search: {
+      provider: "local",
     },
 
     socialLinks: [{ icon: "github", link: "https://github.com/fulll/github-issue-ops" }],
 
     footer: {
       message: "Released under the MIT License.",
-      copyright: "Copyright © 2024 fulll",
+      copyright: "Copyright © fulll",
     },
   },
 });
