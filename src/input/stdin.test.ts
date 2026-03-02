@@ -191,6 +191,57 @@ describe("parseJson (Case 3 — group format)", () => {
   });
 });
 
+// ─── parseMarkdown (GCS native markdown format B) ───────────────────────────
+
+describe("parseMarkdown (GCS native format B — bold repo header + indented items)", () => {
+  const GCS_MD = `27 repos · 112 files · 154 matches selected
+
+## squad-platform
+
+- **fulll/backend** (3 matches)
+  - [ ] [src/app/config.ts:8:63](https://github.com/fulll/backend/blob/abc123/src/app/config.ts#L8)
+  - [x] [src/infra/secret.ts:3:41](https://github.com/fulll/backend/blob/abc123/src/infra/secret.ts#L3)
+
+## squad-api
+
+- **fulll/frontend** (1 match)
+  - [ ] [app/index.ts:5:10](https://github.com/fulll/frontend/blob/def456/app/index.ts#L5)
+`;
+
+  test("parses all items", () => {
+    const result = parseMarkdown(GCS_MD);
+    expect(result.items).toHaveLength(3);
+  });
+
+  test("assigns repo from bold header", () => {
+    const result = parseMarkdown(GCS_MD);
+    expect(result.items[0]?.repo).toBe("fulll/backend");
+    expect(result.items[1]?.repo).toBe("fulll/backend");
+    expect(result.items[2]?.repo).toBe("fulll/frontend");
+  });
+
+  test("strips col number and extracts path + line", () => {
+    const result = parseMarkdown(GCS_MD);
+    expect(result.items[0]).toMatchObject({
+      path: "src/app/config.ts",
+      line: 8,
+      checked: false,
+    });
+  });
+
+  test("extracts checked state", () => {
+    const result = parseMarkdown(GCS_MD);
+    expect(result.items[1]?.checked).toBe(true);
+    expect(result.items[2]?.checked).toBe(false);
+  });
+
+  test("path with no line/col keeps full string and line=0", () => {
+    const md = `- **org/repo**\n  - [ ] [README.md](https://github.com/org/repo/blob/sha/README.md)\n`;
+    const result = parseMarkdown(md);
+    expect(result.items[0]).toMatchObject({ path: "README.md", line: 0 });
+  });
+});
+
 // ─── parseMarkdown (no-line-number alternative) ───────────────────────────────
 
 describe("parseMarkdown (alternative format without line number)", () => {

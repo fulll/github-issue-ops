@@ -120,9 +120,16 @@ export function parseJson(content: string): ParsedResults {
 /**
  * Parses github-code-search Markdown output.
  *
- * Looks for lines like:
+ * Supports two formats:
+ *
+ * Format A — internal github-issue-ops checklist format:
  *   - [ ] `owner/repo` — `path:line` — text
  *   - [x] `owner/repo` — `path:line` — text
+ *
+ * Format B — native github-code-search markdown output:
+ *   ## optional-team-group
+ *   - **owner/repo** (N matches)
+ *     - [ ] [path/to/file.ts:line:col](https://github.com/...)
  *
  * Also extracts:
  *   - Replay command: lines after "# Replay:" that start with "github-code-search"
@@ -138,9 +145,11 @@ export function parseMarkdown(content: string): ParsedResults {
   const lines = content.split("\n");
   let inReplay = false;
   const replayLines: string[] = [];
+  // GCS format B: current repo context set by a `- **owner/repo**` header line
+  let currentRepo: string | undefined;
 
   for (const line of lines) {
-    // Checklist item: - [ ] or - [x]
+    // ── Format A: - [ ] `owner/repo` — `path:line` — text ───────────────────
     const checklistMatch = line.match(/^- \[([ x])\] `([^`]+)` — `([^:]+):(\d+)` — (.*)$/);
     if (checklistMatch) {
       const [, checked, repo, path, lineStr, text] = checklistMatch;
@@ -154,7 +163,7 @@ export function parseMarkdown(content: string): ParsedResults {
       continue;
     }
 
-    // Checklist item (alternative without line number): - [ ] `repo` — `path` — text
+    // ── Format A (no line number): - [ ] `repo` — `path` — text ─────────────
     const checklistNoLine = line.match(/^- \[([ x])\] `([^`]+)` — `([^`]+)` — (.*)$/);
     if (checklistNoLine) {
       const [, checked, repo, path, text] = checklistNoLine;
@@ -162,7 +171,34 @@ export function parseMarkdown(content: string): ParsedResults {
       continue;
     }
 
-    // Replay section
+    // ── Format B: repo header  - **owner/repo** (N matches) ──────────────────
+    const repoHeaderMatch = line.match(/^- \*\*([^*]+)\*\*/);
+    if (repoHeaderMatch) {
+      currentRepo = repoHeaderMatch[1].trim();
+      continue;
+    }
+
+    // ── Format B: indented item  - [ ] [path:line:col](url) ──────────────────
+    const gcsItemMatch = line.match(/^\s+- \[([ x])\] \[([^\]]+)\]\(([^)]+)\)/);
+    if (gcsItemMatch && currentRepo) {
+      const [, checked, pathWithCoords] = gcsItemMatch;
+      // pathWithCoords is "path/to/file.ts:line:col" or "path/to/file.ts:line"
+      const parts = pathWithCoords.split(":");
+      let filePath = pathWithCoords;
+      let lineNum = 0;
+      // Strip trailing numeric segments (col then line) to extract the bare path
+      const trailingNums: number[] = [];
+      while (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1]!)) {
+        trailingNums.unshift(parseInt(parts.pop()!, 10));
+      }
+      filePath = parts.join(":");
+      // trailingNums[0] is the line number (first numeric after path)
+      if (trailingNums.length > 0) lineNum = trailingNums[0]!;
+      items.push({ repo: currentRepo, path: filePath, line: lineNum, text: "", checked: checked === "x" });
+      continue;
+    }
+
+    // ── Replay section ────────────────────────────────────────────────────────
     if (line.trim() === "# Replay:" || line.trim().startsWith("# Replay")) {
       inReplay = true;
       continue;
