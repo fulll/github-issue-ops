@@ -29,7 +29,6 @@ export default defineConfig({
 
     nav: [
       { text: "Getting Started", link: "/getting-started/", activeMatch: "^/getting-started/" },
-      { text: "Guide", link: "/guide/how-it-works", activeMatch: "^/guide/" },
       { text: "Reference", link: "/reference/create", activeMatch: "^/reference/" },
       { text: "Architecture", link: "/architecture/overview", activeMatch: "^/architecture/" },
       { text: "What's New", link: "/whats-new/", activeMatch: "^/whats-new/" },
@@ -40,15 +39,10 @@ export default defineConfig({
         {
           text: "Getting Started",
           items: [
-            { text: "Installation", link: "/getting-started/#installation" },
-            { text: "Quickstart", link: "/getting-started/#quickstart" },
+            { text: "Prerequisites", link: "/getting-started/" },
+            { text: "Installation", link: "/getting-started/installation" },
+            { text: "Quickstart", link: "/getting-started/quickstart" },
           ],
-        },
-      ],
-      "/guide/": [
-        {
-          text: "Guide",
-          items: [{ text: "How it works", link: "/guide/how-it-works" }],
         },
       ],
       "/reference/": [

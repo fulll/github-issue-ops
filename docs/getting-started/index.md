@@ -1,90 +1,38 @@
-# Getting started
+# Prerequisites
 
-## Prerequisites
+The only runtime prerequisite is a GitHub personal access token. The pre-compiled binary is self-contained — you do not need Bun to run it.
 
-- **Bun** or a POSIX shell to run the installer (Bun is only required if you build from source).
-- A GitHub personal access token with `repo` and `read:org` scopes:
+::: tip Building from source?
+If you want to build `github-issue-ops` from source, you will additionally need [Bun](https://bun.sh/) ≥ 1.0. See the [Installation guide](/getting-started/installation#from-source).
+:::
 
-```bash
-export GITHUB_TOKEN=ghp_...
-```
+## GitHub token
 
-## Installation
+A GitHub personal access token (PAT) is required to call the GitHub API.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/fulll/github-issue-ops/main/install.sh | bash
-```
+### Required scopes
 
-Or download the pre-built binary for your platform from [GitHub Releases](https://github.com/fulll/github-issue-ops/releases), then make it executable:
+| Scope      | Purpose                                             |
+| ---------- | --------------------------------------------------- |
+| `repo`     | Creating and reading issues in private repositories |
+| `read:org` | Resolving team ownership (`--team-prefix`)          |
 
-```bash
-chmod +x github-issue-ops
-mv github-issue-ops /usr/local/bin/
-```
+::: details Classic vs fine-grained tokens
+Both token types work. Classic tokens are simpler to configure for org-wide operations. Fine-grained tokens require explicit repository access per repo, which is impractical for org-wide campaigns.
+:::
 
-Verify the installation:
-
-```bash
-github-issue-ops --version
-```
-
-## Quickstart
-
-The typical workflow is three commands: **create**, **refresh**, **dispatch**.
-
-### 1. Create an EPIC issue
-
-Pipe [github-code-search](https://fulll.github.io/github-code-search/) output into `issue create`:
+### Set the token
 
 ```bash
-github-code-search "TODO" --org acme --format markdown \
-  | github-issue-ops issue create \
-    --repo acme/platform \
-    --title "Q1 2025: Address all TODOs" \
-    --label epic \
-    --label tech-debt
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 ```
 
-This creates a single EPIC issue in `acme/platform` with:
+Add this to your shell profile (`~/.zshrc`, `~/.bashrc`, `~/.config/fish/config.fish`, …) to make it permanent.
 
-- a Markdown checklist, one entry per matched repository,
-- a summary table,
-- embedded metadata so `refresh` and `dispatch` can replay the campaign.
+::: warning Token security
+Never commit your token to version control. Use environment variables or a secrets manager.
+:::
 
-### 2. Refresh the checklist
+## Next step
 
-Re-run the search and let `issue refresh` reconcile the diff:
-
-```bash
-github-code-search "TODO" --org acme --format markdown \
-  | github-issue-ops issue refresh \
-    --issue acme/platform#42
-```
-
-New repositories are appended; repositories that no longer appear are checked off automatically.
-
-### 3. Dispatch sub-issues
-
-Preview first, then execute:
-
-```bash
-# Preview
-github-issue-ops issue dispatch \
-  --epic acme/platform#42 \
-  --mode plan
-
-# Execute
-github-issue-ops issue dispatch \
-  --epic acme/platform#42 \
-  --mode apply
-```
-
-One sub-issue is created per repository in the checklist. Assignees are resolved in order: GitHub Teams → CODEOWNERS → JSON mapping → fallback.
-
-## Keep it up to date
-
-```bash
-github-issue-ops upgrade
-```
-
-See [What's New](/whats-new/) for the full changelog.
+→ [Install github-issue-ops](/getting-started/installation)
