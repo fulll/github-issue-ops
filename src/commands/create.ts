@@ -19,6 +19,7 @@ import { readStdin, parseResults } from "../input/stdin.ts";
 import { buildEpicBody, bodyLengthWarning, splitBodyAtLimit } from "../output/format.ts";
 import { createIssue, addComment, listLabels, listIssueTemplates } from "../api/github-api.ts";
 import { openEditor } from "../tui/editor.ts";
+import { reopenStdinAsTty } from "../tui/tty.ts";
 import type { EpicConfig } from "../types.ts";
 
 export interface CreateOptions {
@@ -60,6 +61,11 @@ export async function createAction(options: CreateOptions): Promise<void> {
     p.cancel("No checklist items found in input.");
     process.exit(1);
   }
+
+  // ── Restore TTY for interactive prompts ───────────────────────────────────
+  // stdin was consumed by readStdin() above; re-open /dev/tty so that clack
+  // prompts (text, confirm, select…) can still read from the terminal.
+  reopenStdinAsTty();
 
   // ── Resolve title ─────────────────────────────────────────────────────────
   let title = options.title;
