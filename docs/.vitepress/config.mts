@@ -18,10 +18,10 @@ export default defineConfig({
     ],
     [
       "link",
-      { rel: "apple-touch-icon", sizes: "114x114", href: "/github-issue-ops/apple-touch-icon.png" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/github-issue-ops/apple-touch-icon.png" },
     ],
-    // fulll dark blue as browser theme colour
-    ["meta", { name: "theme-color", content: "#0000CC" }],
+    // brand blue as browser theme colour
+    ["meta", { name: "theme-color", content: "#0033DD" }],
   ],
 
   themeConfig: {

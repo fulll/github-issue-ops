@@ -1,9 +1,15 @@
 # github-issue-ops
 
+<img src="docs/public/logo.svg" alt="github-issue-ops logo" width="80" align="right">
+
+[![Docs](https://img.shields.io/badge/docs-fulll.github.io%2Fgithub--issue--ops-blue)](https://fulll.github.io/github-issue-ops/)
+[![Latest release](https://img.shields.io/github/v/release/fulll/github-issue-ops)](https://github.com/fulll/github-issue-ops/releases/latest)
 [![CI](https://github.com/fulll/github-issue-ops/actions/workflows/ci.yaml/badge.svg)](https://github.com/fulll/github-issue-ops/actions/workflows/ci.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
 CLI to industrialize GitHub issue campaigns (tech debt, security, migration, compliance) from code search results — create EPICs, refresh checklists, dispatch sub-issues per repo.
+
+→ **Full documentation: https://fulll.github.io/github-issue-ops/**
 
 ## What it does
 
@@ -43,10 +49,6 @@ github-issue-ops issue dispatch --epic myorg/tech-debt#42 --mode apply
 # Check for updates
 github-issue-ops upgrade
 ```
-
-## Documentation
-
-Full documentation: <https://fulll.github.io/github-issue-ops/>
 
 ## License
 
