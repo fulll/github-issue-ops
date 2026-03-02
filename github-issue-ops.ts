@@ -249,9 +249,19 @@ function collect(value: string, previous: string[]): string[] {
 }
 
 function exitOnError(err: Error): never {
-  // Commander throws CommanderError on --help / --version — ignore those
-  if ((err as { code?: string }).code === "commander.helpDisplayed") process.exit(0);
-  if ((err as { code?: string }).code === "commander.version") process.exit(0);
+  // Commander throws CommanderError on --help / --version — ignore those.
+  // Possible codes: "commander.helpDisplayed" (--help flag) or "commander.help"
+  // (built-in `help <cmd>` invocation). Both have exitCode 0.
+  const code = (err as { code?: string; exitCode?: number }).code;
+  const exitCode = (err as { exitCode?: number }).exitCode;
+  if (
+    code === "commander.helpDisplayed" ||
+    code === "commander.help" ||
+    code === "commander.version" ||
+    exitCode === 0
+  ) {
+    process.exit(0);
+  }
   const prefix = HAS_COLOR ? pc.red("Error: ") : "Error: ";
   writeFileSync(2, `${prefix}${err.message}\n`);
   process.exit(1);
