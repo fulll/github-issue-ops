@@ -260,10 +260,19 @@ body::before {
 }
 
 .uc-icon {
-  font-size: 24px;
   line-height: 1;
   flex-shrink: 0;
   margin-top: 2px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.uc-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--vp-c-brand-1);
+  stroke: currentColor;
+  flex-shrink: 0;
 }
 
 .uc-body strong {
@@ -402,9 +411,17 @@ body::before {
 
 .pillar-icon {
   grid-area: icon;
-  font-size: 1.25rem;
-  line-height: 1;
+  display: flex;
+  align-items: flex-start;
   padding-top: 2px;
+}
+
+.pillar-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--vp-c-brand-1);
+  stroke: currentColor;
+  flex-shrink: 0;
 }
 
 .pillar-label {
