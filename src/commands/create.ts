@@ -41,14 +41,23 @@ export async function createAction(options: CreateOptions): Promise<void> {
     process.exit(1);
   }
 
-  // ── Read stdin ────────────────────────────────────────────────────────────
-  p.intro(pc.bold("github-issue-ops") + pc.dim(" · issue create"));
-
+  // ── Read stdin (before any clack call) ───────────────────────────────────
+  // Consume the pipe first, then reopen /dev/tty, then call p.intro() so that
+  // clack captures the live terminal stream — not the already-EOF pipe.
   const raw = await readStdin();
   if (!raw) {
-    p.cancel("No input detected. Pipe github-code-search output or JSON results into stdin.");
+    process.stderr.write(
+      `${pc.red("✘")} No input detected. Pipe github-code-search output or JSON results into stdin.\n`,
+    );
     process.exit(1);
   }
+
+  // ── Restore TTY before initialising clack ────────────────────────────────
+  // After readStdin() the pipe is at EOF. Re-open /dev/tty so that every
+  // clack prompt (text, confirm, select…) reads from the physical terminal.
+  reopenStdinAsTty();
+
+  p.intro(pc.bold("github-issue-ops") + pc.dim(" · issue create"));
 
   const s = p.spinner();
   s.start("Parsing results…");
@@ -61,11 +70,6 @@ export async function createAction(options: CreateOptions): Promise<void> {
     p.cancel("No checklist items found in input.");
     process.exit(1);
   }
-
-  // ── Restore TTY for interactive prompts ───────────────────────────────────
-  // stdin was consumed by readStdin() above; re-open /dev/tty so that clack
-  // prompts (text, confirm, select…) can still read from the terminal.
-  reopenStdinAsTty();
 
   // ── Resolve title ─────────────────────────────────────────────────────────
   let title = options.title;

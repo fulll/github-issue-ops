@@ -25,6 +25,9 @@ export function reopenStdinAsTty(): void {
   try {
     const fd = openSync("/dev/tty", "r+");
     const tty = new ReadStream(fd);
+    // Mark the stream as a TTY so that clack (and other prompt libs) know they
+    // are running in an interactive context and enable raw-mode input.
+    (tty as unknown as Record<string, unknown>).isTTY = true;
     // @ts-expect-error — intentionally replacing the global stdin stream
     process.stdin = tty;
     process.stdin.resume();
